@@ -350,94 +350,40 @@ except Exception as e:
 statinfo = os.stat(pickle_file)
 print('Compressed pickle size:', statinfo.st_size)
 
-## 0 trainSet, 1 testSet, 2 validSet
-def typeCompare(typeValue):
-  if (typeValue ==0): 
-    return 'validSet', 'trainSet'
-  if (typeValue ==1):
-    return 'validSet', 'testSet'
-  if (typeValue ==2):
-    return 'testSet', 'trainSet'
 
-def findInstInSet(sourceSet, compSet):
-  import collections
-##  for instance in souceSet:
-##    for instanceCompset in compSet:
+##NUEVO INTENTO TOMADO DE mpacer
 
-##  d = collections.OrderedDict()
-##  for a in sourceSet:
-##    t = tuple(a)
-##    if t in compSet:
-##      d[t] += 1
-##    else:
-##        d[t] = 1
-##
-##  result = []
-##  for (key, value) in d.items():
-##    result.append(list(key) + [value])
-##
-##  B = numpy.asarray(result)
-  sourceSet.flags.writeable=False
-  compSet.flags.writeable=False
-  dup_table={}
-  for idx,img in enumerate(sourceSet):
-    h = hash(img.data)
-    if h in dup_table and (compSet[dup_table[h]].data == img.data):
-       print ('Duplicate image: %d matches %d' % (idx, dup_table[h]))
-    dup_table[h] = idx
+import hashlib
+import time
+from itertools import combinations
 
-findInstInSet(valid_dataset, train_dataset)
-findInstInSet(valid_dataset, test_dataset)
+start = time.time()
 
-findInstInSet(test_dataset, train_dataset)
+same_set = []
+d_sets = [train_dataset, test_dataset, valid_dataset]
+d_sets_names = ["train_dataset", "test_dataset", "valid_dataset"]
+rep_counts = {}
 
-def findInstInSet2(sourceSet, compSet, typeComp):
-  contador = 0
-  sourceSet.flags.writeable = False
-  compSet.flags.writeable = False
+for i,x in enumerate(d_sets):
+    same_set.append(set([hashlib.sha1(image_array).hexdigest() for image_array in x]))
+    rep_counts[d_sets_names[i]]= {"orig_len": len(x),
+                                  "uniq_len": len(same_set[i]),
+                                  "repeat_count" : len(x)-len(same_set[i])}
+    
+set_pairs = combinations(d_sets,2)
+set_pair_names = combinations(d_sets_names,2)
 
+for i, ((first_set_name, second_set_name),(first_set, second_set)) in enumerate(zip(set_pair_names,set_pairs)):
+    total_set_lengths = rep_counts[first_set_name]["orig_len"] + rep_counts[second_set_name]["orig_len"]
+    total_unique_lens = rep_counts[first_set_name]["uniq_len"] + rep_counts[second_set_name]["uniq_len"]
+    final_unique_lens = len(set([hashlib.sha1(image_array).hexdigest() 
+                                 for image_array in np.vstack((first_set,second_set))]))
 
-  import timeit
-  start_time = timeit.default_timer()
-  
-  
-  for instance in sourceSet:
-    first = hash(instance.data)
-    for instanceCompset in compSet:
-      second = hash(instanceCompset.data)
-      if first == second:
-        ++contador
+    rep_counts[first_set_name + " " + second_set_name] = {"total_set_lengths": total_set_lengths,
+                                                         "total_unique_lens": total_unique_lens,
+                                                          "repeat_count": total_unique_lens - final_unique_lens}
+for x in [[key,val["repeat_count"]]for key,val in rep_counts.items()]:
 
-  elapsed = timeit.default_timer() - start_time
-          
-  print ("Duplicados en %d :%d", typeCompare(typeComp),contador )
-  print ("Tiempo de procesamiento: ", elapsed)
-
-
-def imprimirInstancias():
-  contador = 0
-  train_dataset.flags.writeable = False
-  test_dataset.flags.writeable = False
-  valid_dataset.flags.writeable = False
-
-  print ("Train set")
-  for instance in train_dataset:
-    print( hash(instance.data))
-
-  print ("Test set")  
-  for instance in test_dataset:
-    print( hash(instance.data))
-
-  print ("Valid set")  
-  for instance in valid_dataset:
-    print( hash(instance.data))    
-
-
-imprimirInstancias()
-##findInstInSet2(valid_dataset, train_dataset, 0)
-##findInstInSet2(valid_dataset, test_dataset, 1)
-##
-##findInstInSet2(test_dataset, train_dataset, 2)
   
 
 # ---
