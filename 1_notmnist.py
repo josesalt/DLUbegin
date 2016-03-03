@@ -357,35 +357,68 @@ import hashlib
 import time
 from itertools import combinations
 
-start = time.time()
+def methodMpacer(train, test, valid):
+  start = time.time()
 
-same_set = []
-d_sets = [train_dataset, test_dataset, valid_dataset]
-d_sets_names = ["train_dataset", "test_dataset", "valid_dataset"]
-rep_counts = {}
+  same_set = []
+  d_sets = [train, test, valid]
+  d_sets_names = ["train_dataset", "test_dataset", "valid_dataset"]
+  rep_counts = {}
 
-for i,x in enumerate(d_sets):
-    same_set.append(set([hashlib.sha1(image_array).hexdigest() for image_array in x]))
-    rep_counts[d_sets_names[i]]= {"orig_len": len(x),
-                                  "uniq_len": len(same_set[i]),
-                                  "repeat_count" : len(x)-len(same_set[i])}
+  for i,x in enumerate(d_sets):
+      same_set.append(set([hashlib.sha1(image_array).hexdigest() for image_array in x]))
+
+#      X es el set completo, same_set es el set generado de hash por lo que no tiene valores duplicados
+#      print ("orig_len: {0} uniq_len: {1} repeat_count: {2}".format(len(x), len(same_set[i]),len(x)-len(same_set[i])))
+
+      rep_counts[d_sets_names[i]]= {"orig_len": len(x),
+                                    "uniq_len": len(same_set[i]),
+                                    "repeat_count" : len(x)-len(same_set[i])}
     
-set_pairs = combinations(d_sets,2)
-set_pair_names = combinations(d_sets_names,2)
+# Genera combinaciones posibles entre los conjuntos, los cuales ya son valores hash por el proceso anterior    
+  set_pairs = combinations(d_sets,2)
+#  print (list(set_pairs))
 
-for i, ((first_set_name, second_set_name),(first_set, second_set)) in enumerate(zip(set_pair_names,set_pairs)):
-    total_set_lengths = rep_counts[first_set_name]["orig_len"] + rep_counts[second_set_name]["orig_len"]
-    total_unique_lens = rep_counts[first_set_name]["uniq_len"] + rep_counts[second_set_name]["uniq_len"]
-    final_unique_lens = len(set([hashlib.sha1(image_array).hexdigest() 
-                                 for image_array in np.vstack((first_set,second_set))]))
+# Genera combinaciones posibles entre los nombres de los conjuntos
+  set_pair_names = combinations(d_sets_names,2)
+#  print (list(set_pair_names))
+  
+  contador = 0
+  for i, ((first_set_name, second_set_name),(first_set, second_set)) in enumerate(zip(set_pair_names,set_pairs)):
 
-    rep_counts[first_set_name + " " + second_set_name] = {"total_set_lengths": total_set_lengths,
+#     total_set_lengths: Suma del total de instancias en los conjuntos
+      total_set_lengths = rep_counts[first_set_name]["orig_len"] + rep_counts[second_set_name]["orig_len"]
+      # print (" total_set_lengths: {0}  = rep_counts[first_set_name]['orig_len']: {1} + rep_counts[second_set_name]['orig_len'] {2}".format(
+      #           total_set_lengths, rep_counts[first_set_name]["orig_len"], rep_counts[second_set_name]["orig_len"]))
+
+#     total_unique_lens: Suma del total de instancias unicas en base a su valor hash en cada uno de los conjuntos      
+      total_unique_lens = rep_counts[first_set_name]["uniq_len"] + rep_counts[second_set_name]["uniq_len"]
+      # print (" total_unique_lens: {0}  = rep_counts[first_set_name]['uniq_len']: {1} + rep_counts[second_set_name]['uniq_len'] {2}".format(
+      #           total_unique_lens, rep_counts[first_set_name]["uniq_len"], rep_counts[second_set_name]["uniq_len"]))
+
+#     final_unique_lens: Suma del total de instancias unicas de la conjunción de los 2 conjuntos (vstack)
+#     pero como se forma un conjunto de valores hash, las ocurrencias son únicas
+      # set_NUEVO = set([hashlib.sha1(image_array).hexdigest() 
+      #                              for image_array in np.vstack((first_set,second_set))])
+      # print (len(set_NUEVO))
+
+      final_unique_lens = len(set([hashlib.sha1(image_array).hexdigest() 
+                                   for image_array in np.vstack((first_set,second_set))]))
+      # print (" final_unique_lens: {0}".format(final_unique_lens))
+ 
+ # "repeat_count": total_unique_lens - final_unique_lens obtiene la diferencia entre los valores únicos encontrados en cada conjunto respecto a todos
+ # y los valores únicos resultado de la conjunción de ambos conjuntos
+      rep_counts[first_set_name + " " + second_set_name] = {"total_set_lengths": total_set_lengths,
                                                           "total_unique_lens": total_unique_lens,
                                                           "repeat_count": total_unique_lens - final_unique_lens}
-for x in [[key,val["repeat_count"]]for key,val in rep_counts.items()]:
-    print(x)
-print(time.time()-start,"s")
+  
+  for x in [[key,val["repeat_count"]]for key,val in rep_counts.items()]:
+      print(x)
+  print(time.time()-start,"s")
 
+  return same_set
+
+sanitized_set  = methodMpacer(train_dataset, test_dataset, valid_dataset)
 # ---
 # Problem 5
 # ---------
@@ -425,9 +458,12 @@ logRegr = LogisticRegression()
 
 def pruebas(cantidadInstancias): 
   modelo = logRegr.fit(X[0:cantidadInstancias],train_labels[0:cantidadInstancias])
-  print ("Resultado entrenamiento con {0:d} instancias {1:.2%}".format (cantidadInstancias, modelo.score(X[0:cantidadInstancias],train_labels[0:cantidadInstancias])))
-  print ("Resultado validacion con {0:d} instancias {1:.2%}".format (cantidadInstancias, modelo.score(V[0:cantidadInstancias],valid_labels[0:cantidadInstancias])))
-  print ("Resultado prueba con {0:d} instancias {1:.2%} \n".format (cantidadInstancias, modelo.score(Y[0:cantidadInstancias],test_labels[0:cantidadInstancias])))
+  print ("Resultado entrenamiento con {0:d} instancias {1:.2%}".format (cantidadInstancias, 
+          modelo.score(X[0:cantidadInstancias],train_labels[0:cantidadInstancias])))
+  print ("Resultado validacion con {0:d} instancias {1:.2%}".format (cantidadInstancias, 
+          modelo.score(V[0:cantidadInstancias],valid_labels[0:cantidadInstancias])))
+  print ("Resultado prueba con {0:d} instancias {1:.2%} \n".format (cantidadInstancias, 
+          modelo.score(Y[0:cantidadInstancias],test_labels[0:cantidadInstancias])))
   
 pruebas(50)
 # pruebas(100)
@@ -438,3 +474,13 @@ pruebas(50)
 # print ("Resultado entrenamiento con {0:d} instancias {1:.2%}".format (train_labels.size, modelo.score(X,train_labels)))
 # print ("Resultado validacion con {0:d} instancias {1:.2%}".format (valid_labels.size, modelo.score(V,valid_labels)))
 # print ("Resultado prueba con {0:d} instancias {1:.2%} \n".format (test_labels.size, modelo.score(Y,test_labels)))
+
+######PROCESO PARA SANITANIZAR LOS CONJUNTOS
+
+# test_dataSetSanit = np.ndarray(test_dataset.shape, test_dataset.dtype)
+
+# print(len(sanitized_set[0]))
+# print(len(sanitized_set[1]))
+# print(len(sanitized_set[2]))
+
+# nuevoSanitz = methodMpacer(sanitized_set[0], sanitized_set[1], sanitized_set[2])
