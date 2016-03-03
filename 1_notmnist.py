@@ -380,11 +380,11 @@ for i, ((first_set_name, second_set_name),(first_set, second_set)) in enumerate(
                                  for image_array in np.vstack((first_set,second_set))]))
 
     rep_counts[first_set_name + " " + second_set_name] = {"total_set_lengths": total_set_lengths,
-                                                         "total_unique_lens": total_unique_lens,
+                                                          "total_unique_lens": total_unique_lens,
                                                           "repeat_count": total_unique_lens - final_unique_lens}
 for x in [[key,val["repeat_count"]]for key,val in rep_counts.items()]:
-
-  
+    print(x)
+print(time.time()-start,"s")
 
 # ---
 # Problem 5
@@ -411,3 +411,30 @@ for x in [[key,val["repeat_count"]]for key,val in rep_counts.items()]:
 # Optional question: train an off-the-shelf model on all the data!
 # 
 # ---
+
+(samples, width, height) = train_dataset.shape
+X = np.reshape(train_dataset,(samples,width*height))
+
+(samples, width, height) = test_dataset.shape
+Y = np.reshape(test_dataset,(samples,width*height))
+
+(samples, width, height) = valid_dataset.shape
+V = np.reshape(valid_dataset,(samples,width*height))
+
+logRegr = LogisticRegression()
+
+def pruebas(cantidadInstancias): 
+  modelo = logRegr.fit(X[0:cantidadInstancias],train_labels[0:cantidadInstancias])
+  print ("Resultado entrenamiento con {0:d} instancias {1:.2%}".format (cantidadInstancias, modelo.score(X[0:cantidadInstancias],train_labels[0:cantidadInstancias])))
+  print ("Resultado validacion con {0:d} instancias {1:.2%}".format (cantidadInstancias, modelo.score(V[0:cantidadInstancias],valid_labels[0:cantidadInstancias])))
+  print ("Resultado prueba con {0:d} instancias {1:.2%} \n".format (cantidadInstancias, modelo.score(Y[0:cantidadInstancias],test_labels[0:cantidadInstancias])))
+  
+pruebas(50)
+# pruebas(100)
+# pruebas(1000)
+# pruebas(5000)
+
+# modelo = logRegr.fit(X,train_labels)
+# print ("Resultado entrenamiento con {0:d} instancias {1:.2%}".format (train_labels.size, modelo.score(X,train_labels)))
+# print ("Resultado validacion con {0:d} instancias {1:.2%}".format (valid_labels.size, modelo.score(V,valid_labels)))
+# print ("Resultado prueba con {0:d} instancias {1:.2%} \n".format (test_labels.size, modelo.score(Y,test_labels)))
