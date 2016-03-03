@@ -477,6 +477,64 @@ pruebas(50)
 
 ######PROCESO PARA SANITANIZAR LOS CONJUNTOS
 
+# Genera tablas de valores hash de los registros repetidos entre el conjunto de entren-prueba y validación-(entren y prueba)
+def generateIntersections(train, test, valid):
+  same_set = []
+  d_sets = [train, test, valid]
+  d_sets_names = ["train_dataset", "test_dataset", "valid_dataset"]
+  rep_counts = {}
+
+  for i,x in enumerate(d_sets):
+      same_set.append(set([hashlib.sha1(image_array).hexdigest() for image_array in x]))
+
+  interTrainTest = same_set[0].intersection(same_set[1])    
+  interValidRest = same_set[0].intersection(same_set[2]) 
+  interValidRest = interValidRest.union(same_set[1].intersection(same_set[2]) )
+
+  return interTrainTest, interValidRest
+
+dupTrainTest, dupValidRest = generateIntersections(train_dataset, test_dataset, valid_dataset)
+
+def generateSanitaizedVersion(data_folders, base, labels, baseRepet, counter):
+
+  from collections import defaultdict
+  limits = np.zeros(10)
+
+  root = os.path.join(os.curdir,data_folders)
+  print (root)
+
+  baseCompl = []
+
+  j=0
+  acumul=0
+  for i, pickleFile in enumerate(os.listdir(root)):
+      if (pickleFile.endswith('.pickle')):
+        pickle_file = os.path.join(root, pickleFile)
+        ax = pickle.load(open(pickle_file,  'rb')) 
+        for img in ax:
+          baseCompl[acumul]=img
+          acumul+=1
+        limits[j]=acumul 
+        j+=1
+
+  counter = counter/j
+  counters = [counter, counter,counter,counter,counter,counter,counter,counter,counter]
+  for image in base:
+    if hashlib.sha1(image_array).hexdigest() in baseRepet:
+      if label == 0:
+        rep = True
+        while (rep):
+          if (baseCompl[label],[counters[label]] not in baseRepet):
+            rep = False
+            image_array = baseCompl[label],[counters[label]]
+            counters[label]+=1
+          else: counters[label]+=1
+
+
+generateSanitaizedVersion("notMNIST_small",test_dataset, test_labels, dupTrainTest, test_size)
+
+
+
 # test_dataSetSanit = np.ndarray(test_dataset.shape, test_dataset.dtype)
 
 # print(len(sanitized_set[0]))
