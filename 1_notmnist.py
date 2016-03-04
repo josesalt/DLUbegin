@@ -222,6 +222,12 @@ def showImagePlot2(source):
 
 # In[ ]:
 
+def showImagePlotNdArray(img2Plot, texto):
+  """Plot values from a ndarray."""  
+  plt.imshow(img2Plot)
+  plt.figtext(0.3,0.025,texto)
+  plt.show()  
+
 def make_arrays(nb_rows, img_size):
   if nb_rows:
     dataset = np.ndarray((nb_rows, img_size, img_size), dtype=np.float32)
@@ -257,7 +263,7 @@ def merge_datasets(pickle_files, train_size, valid_size=0):
           valid_labels[start_v:end_v] = label
           start_v += vsize_per_class
           end_v += vsize_per_class
-                              
+
         train_letter = letter_set[vsize_per_class:end_l, :, :]
         train_dataset[start_t:end_t, :, :] = train_letter
         train_labels[start_t:end_t] = label
@@ -289,7 +295,7 @@ def showSetlenght(source, tipo):
   
   y = np.bincount(source)
   ii = np.nonzero(y)[0]
-  x = np.vstack((ii,y[ii])).T
+  x = np.vstack((ii,y[ii]))  #.T
   print(x)
 
 showSetlenght(train_labels, 'train set')
@@ -306,14 +312,17 @@ def randomize(dataset, labels):
   shuffled_dataset = dataset[permutation,:,:]
   shuffled_labels = labels[permutation]
   calcResumen(shuffled_dataset, shuffled_labels)
+
+# Compare the images before shuffling and after  
+#  for i in range(1):
+#    x = randint(0,len(labels))    
+#    showImagePlotNdArray(dataset[permutation[x]],"LABEL before randomize: {0} After Randomize".format(labels[permutation[x]]))
+#    showImagePlotNdArray(shuffled_dataset[x],"LABEL AFTER randomize: {0} After Randomize".format(shuffled_labels[x]))
+
   return shuffled_dataset, shuffled_labels
 
 train_dataset, train_labels = randomize(train_dataset, train_labels)
 test_dataset, test_labels = randomize(test_dataset, test_labels)
-
-showSetlenght(train_labels, 'train set after shuffle')
-showSetlenght(valid_labels, 'valid set after shuffle')
-showSetlenght(test_labels, 'test set after shuffle')
 
 # ---
 # Problem 4
@@ -418,7 +427,6 @@ def methodMpacer(train, test, valid):
 
   return same_set
 
-sanitized_set  = methodMpacer(train_dataset, test_dataset, valid_dataset)
 # ---
 # Problem 5
 # ---------
@@ -465,11 +473,6 @@ def pruebas(cantidadInstancias):
   print ("Resultado prueba con {0:d} instancias {1:.2%} \n".format (cantidadInstancias, 
           modelo.score(Y[0:cantidadInstancias],test_labels[0:cantidadInstancias])))
   
-pruebas(50)
-# pruebas(100)
-# pruebas(1000)
-# pruebas(5000)
-
 # modelo = logRegr.fit(X,train_labels)
 # print ("Resultado entrenamiento con {0:d} instancias {1:.2%}".format (train_labels.size, modelo.score(X,train_labels)))
 # print ("Resultado validacion con {0:d} instancias {1:.2%}".format (valid_labels.size, modelo.score(V,valid_labels)))
@@ -495,50 +498,86 @@ def generateIntersections(train, test, valid):
 
 dupTrainTest, dupValidRest = generateIntersections(train_dataset, test_dataset, valid_dataset)
 
-def generateSanitaizedVersion(data_folders, base, labels, baseRepet, counter):
-
-  from collections import defaultdict
-  limits = np.zeros(10)
+# Recibe the dataset to sanitize, the base of the duplicated instances, and the information about the size of the complete set
+def generateSanitaizedVersion(data_folders, base, labelsSet, baseRepet, counter, alreadyInBase):
+  """Replace the duplicated instances for others in the original database."""
+  from collections import deque
+  limits = np.zeros(11, np.dtype(np.int16))
 
   root = os.path.join(os.curdir,data_folders)
-  print (root)
+#  print (root)
 
-  baseCompl = []
+  baseCompl = deque()
 
   j=0
   acumul=0
-  for i, pickleFile in enumerate(os.listdir(root)):
-      if (pickleFile.endswith('.pickle')):
-        pickle_file = os.path.join(root, pickleFile)
-        ax = pickle.load(open(pickle_file,  'rb')) 
-        for img in ax:
-          baseCompl[acumul]=img
-          acumul+=1
-        limits[j]=acumul 
-        j+=1
+
+  def char_range(c1, c2):
+    """Generates the characters from `c1` to `c2`, inclusive."""
+    for c in xrange(ord(c1), ord(c2)+1):
+      yield chr(c)    
+  
+  for pickleFile in char_range('A', 'J'):
+    pickleFile= pickleFile + '.pickle'
+#    print (pickleFile)
+    
+    pickle_file = os.path.join(root, pickleFile)
+    ax = pickle.load(open(pickle_file,  'rb')) 
+    for img in ax:
+      baseCompl.append(img)
+      acumul+=1
+    limits[j+1]=acumul
+    j+=1
 
   counter = counter/j
-  counters = [counter, counter,counter,counter,counter,counter,counter,counter,counter]
-  for image in base:
-    if hashlib.sha1(image_array).hexdigest() in baseRepet:
-      if label == 0:
-        rep = True
-        while (rep):
-          if (baseCompl[label],[counters[label]] not in baseRepet):
-            rep = False
-            image_array = baseCompl[label],[counters[label]]
-            counters[label]+=1
-          else: counters[label]+=1
+  counters = [counter, counter,counter,counter,counter,counter,counter,counter,counter,counter]
 
+#  print ("Limites: {0}".format(limits))
+#  print ("Contadores: {0}".format(counters))
+ 
+ # count_test = 0
+  
+  for count, image in enumerate(base):    
+    if hashlib.sha1(image).hexdigest() in baseRepet:
+      label4Subs = labelsSet[count]
+#      print ("labels[count]: {0} counters[labels[count]]:{1} limits[labels[count]]:{2}".format(label4Subs,counters[label4Subs],limits[label4Subs]))
+      rep = True
+      while (rep):        
+        if (hashlib.sha1(baseCompl[counters[label4Subs]+limits[label4Subs]]).hexdigest() not in baseRepet and 
+            hashlib.sha1(baseCompl[counters[label4Subs]+limits[label4Subs]]).hexdigest() not in alreadyInBase):          
+          rep = False
 
-generateSanitaizedVersion("notMNIST_small",test_dataset, test_labels, dupTrainTest, test_size)
+#          if count_test < 10:
+#            showImagePlotNdArray(image, "Before ")
+          base[count] = baseCompl[counters[label4Subs]+limits[label4Subs]]
 
+#          if count_test < 10:
+#            print ("labels[count]: {0} counters[labels[count]]:{1} limits[labels[count]]:{2}".format(label4Subs,counters[label4Subs],limits[label4Subs]))          
+#            showImagePlotNdArray(image,"After")
+#            count_test+= 1
+#          counters[label4Subs]+=1
+        else: counters[label4Subs]+=1
 
+        # print ("Limites: {0}".format(limits))
+        # print ("Contadores: {0}".format(counters))
 
-# test_dataSetSanit = np.ndarray(test_dataset.shape, test_dataset.dtype)
+  return base
 
-# print(len(sanitized_set[0]))
-# print(len(sanitized_set[1]))
-# print(len(sanitized_set[2]))
+#print ("SETS Size train:{0}, Size test:{1}, Size valid:{2}".format(len(train_dataset), len(test_dataset), len(valid_dataset)))
 
-# nuevoSanitz = methodMpacer(sanitized_set[0], sanitized_set[1], sanitized_set[2])
+same_set = methodMpacer(train_dataset, test_dataset, valid_dataset)
+#TESTS BEFORE SANITIZATION
+#pruebas(50)
+#pruebas(100)
+#pruebas(1000)
+pruebas(20000)
+
+test_dataset = generateSanitaizedVersion("notMNIST_small",test_dataset, test_labels, dupTrainTest, test_size, same_set)
+valid_dataset = generateSanitaizedVersion("notMNIST_large",valid_dataset, valid_labels, dupValidRest, train_size+valid_size, same_set)
+
+methodMpacer(train_dataset, test_dataset, valid_dataset)
+#TESTS AFTER SANITIZATION
+#pruebas(50)
+#pruebas(100)
+#pruebas(1000)
+pruebas(20000)
